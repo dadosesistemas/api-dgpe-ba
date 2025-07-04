@@ -51,13 +51,7 @@ git clone <repository-url>
 cd api-dgpe-ba
 ```
 
-2. **Crie um ambiente virtual**:
-```bash
-python -m venv venv
-source venv/bin/activate  # No Windows: venv\Scripts\activate
-```
-
-3. **Instale as dependências**:
+2. **Instale as dependências**:
 ```bash
 pip install -r requirements.txt
 ```
@@ -343,6 +337,8 @@ Este projeto é licenciado sob a [MIT License](LICENSE).
 
 ---
 
-**Desenvolvido para a Secretaria de Educação da Bahia (SEC-BA)**
+**Desenvolvido para a Secretaria de Educação da Bahia (SEC-BA) pelo DGPE FGV**
 
 Para mais informações ou suporte, entre em contato com a equipe de desenvolvimento.
+
+Desenvolvido com ❤️ para a educação baiana
