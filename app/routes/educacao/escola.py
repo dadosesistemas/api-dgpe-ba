@@ -1,9 +1,6 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
+from sqlalchemy import text 
 from sqlalchemy.orm import Session
-from sqlalchemy import select
-from app.models.educacao.escola import Escola
-from app.models.educacao.nte import NTE
-from app.models.educacao.municipio import Municipio
 from app.schemas.educacao.escola import Escola as EscolaSchema
 from app.core.database import get_db
 from typing import Optional
@@ -13,53 +10,43 @@ router = APIRouter(prefix="/api/v1/escola", tags=["Escola"])
 @router.get("/", response_model=list[EscolaSchema])
 def list_escolas(
     db: Session = Depends(get_db),
+    codigo_sec: Optional[int] = Query(None, description="Filtrar por código SEC"),
     nome: Optional[str] = Query(None, description="Filtrar por nome da escola"),
     nte: Optional[str] = Query(None, description="Filtrar por NTE")
 ):
-    query = db.query(
-        Escola,
-        NTE.nome.label('nte'),
-        Municipio.nome.label('municipio')
-    ).join(
-        NTE, Escola.nte_id == NTE.id
-    ).join(
-        Municipio, Escola.municipio_id == Municipio.id
-    ).all()
-
+    filter_conditions = []
+    params = {}
+    
+    if codigo_sec:
+        filter_conditions.append("e.codigo_sec = :codigo_sec")
+        params["codigo_sec"] = codigo_sec
     if nome:
-        query = query.filter(Escola.nome.ilike(f"%{nome}%"))
+        filter_conditions.append("unaccent(e.nome) ILIKE :nome")
+        params["nome"] = f"%{nome}%"
     if nte:
-        query = query.filter(Escola.nte == nte)
+        filter_conditions.append("unaccent(n.nome) ILIKE :nte")
+        params["nte"] = f"%{nte}%"
     
-    return [{
-        **escola.__dict__,
-        'nte': nte,
-        'municipio': municipio
-    } for escola, nte, municipio in query]
-
-@router.get("/{codigo_sec}", response_model=EscolaSchema)
-def get_escola(
-    codigo_sec: int,
-    db: Session = Depends(get_db)
-):
-    query = db.query(
-        Escola,
-        NTE.nome.label('nte'),
-        Municipio.nome.label('municipio')
-    ).join(
-        NTE, Escola.nte_id == NTE.id
-    ).join(
-        Municipio, Escola.municipio_id == Municipio.id
-    ).filter(
-        Escola.codigo_sec == codigo_sec
-    ).first()
-
-    if not query:
-        raise HTTPException(status_code=404, detail="Escola não encontrada")
+    where_clause = f"WHERE {' AND '.join(filter_conditions)}" if filter_conditions else ""
     
-    escola, nte, municipio = query
-    return {
-        **escola.__dict__,
-        'nte': nte,
-        'municipio': municipio
-    }
+    query = text(f"""
+        SELECT e.*,
+               n.nome AS nte,
+               m.nome AS municipio,
+               f.series_avaliacao_diagnostica,
+               f.rpp,
+               f.militar,
+               f.efa,
+               f.cemit,
+               f.prioritaria,
+               f.motivo_prioritaria
+        FROM escola e
+        LEFT JOIN nte n ON e.nte_id = n.id
+        LEFT JOIN municipio m ON e.municipio_id = m.id
+        LEFT JOIN flag_escola f ON e.id = f.escola_id
+        {where_clause}
+    """)
+
+    results = db.execute(query, params).mappings().all()
+
+    return [dict(row) for row in results]
