@@ -13,7 +13,12 @@ def list_escolas(
     codigo_sec: Optional[int] = Query(None, description="Filtrar por código SEC"),
     nome: Optional[str] = Query(None, description="Filtrar por nome da escola"),
     nte: Optional[str] = Query(None, description="Filtrar por NTE"),
-    militar: Optional[str] = Query(None, description="Filtrar por Escolas Militares")
+    series_avaliacao_diagnostica: Optional[int] = Query(None, description="Filtrar por série de avaliação diagnóstica"),
+    rpp: Optional[int] = Query(None, description="Filtrar por RPP"),
+    militar: Optional[str] = Query(None, description="Filtrar por Escolas Militares"),
+    efa: Optional[str] = Query(None, description="Filtrar por EFA"),
+    cemit: Optional[str] = Query(None, description="Filtrar por CEMIT"),
+    prioritaria: Optional[str] = Query(None, description="Filtrar por escolas prioritárias")
 ):
     filter_conditions = []
     params = {}
@@ -27,10 +32,30 @@ def list_escolas(
     if nte:
         filter_conditions.append("unaccent(n.nome) ILIKE :nte")
         params["nte"] = f"%{nte}%"
+
+    if series_avaliacao_diagnostica:
+        filter_conditions.append("f.series_avaliacao_diagnostica = :series_avaliacao_diagnostica")
+        params["series_avaliacao_diagnostica"] = series_avaliacao_diagnostica
+    
+    if rpp:
+        filter_conditions.append("f.rpp = :rpp")
+        params["rpp"] = rpp
     
     if militar:
         filter_conditions.append("f.militar = :militar")
         params["militar"] = militar
+
+    if efa:
+        filter_conditions.append("f.efa = :efa")
+        params["efa"] = efa
+
+    if cemit:
+        filter_conditions.append("f.cemit = :cemit")
+        params["cemit"] = cemit
+
+    if prioritaria:
+        filter_conditions.append("f.prioritaria = :prioritaria")
+        params["prioritaria"] = prioritaria
     
     where_clause = f"WHERE {' AND '.join(filter_conditions)}" if filter_conditions else ""
     
