@@ -12,7 +12,8 @@ def list_escolas(
     db: Session = Depends(get_db),
     codigo_sec: Optional[int] = Query(None, description="Filtrar por código SEC"),
     nome: Optional[str] = Query(None, description="Filtrar por nome da escola"),
-    nte: Optional[str] = Query(None, description="Filtrar por NTE")
+    nte: Optional[str] = Query(None, description="Filtrar por NTE"),
+    militar: Optional[str] = Query(None, description="Filtrar por Escolas Militares")
 ):
     filter_conditions = []
     params = {}
@@ -26,6 +27,10 @@ def list_escolas(
     if nte:
         filter_conditions.append("unaccent(n.nome) ILIKE :nte")
         params["nte"] = f"%{nte}%"
+    
+    if militar:
+        filter_conditions.append("f.militar = :militar")
+        params["militar"] = militar
     
     where_clause = f"WHERE {' AND '.join(filter_conditions)}" if filter_conditions else ""
     
