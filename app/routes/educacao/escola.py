@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy import text 
 from sqlalchemy.orm import Session
 from app.schemas.educacao.escola import Escola as EscolaSchema
 from app.core.database import get_db
 from typing import Optional
+import io
+import csv
 
 router = APIRouter(prefix="/api/v1/escola", tags=["Escola"])
 
@@ -15,10 +18,11 @@ def list_escolas(
     nte: Optional[str] = Query(None, description="Filtrar por NTE"),
     series_avaliacao_diagnostica: Optional[int] = Query(None, description="Filtrar por série de avaliação diagnóstica"),
     rpp: Optional[int] = Query(None, description="Filtrar por RPP"),
-    militar: Optional[str] = Query(None, description="Filtrar por Escolas Militares"),
-    efa: Optional[str] = Query(None, description="Filtrar por EFA"),
-    cemit: Optional[str] = Query(None, description="Filtrar por CEMIT"),
-    prioritaria: Optional[str] = Query(None, description="Filtrar por escolas prioritárias")
+    militar: Optional[int] = Query(None, description="Filtrar por Escolas Militares"),
+    efa: Optional[int] = Query(None, description="Filtrar por EFA"),
+    cemit: Optional[int] = Query(None, description="Filtrar por CEMIT"),
+    prioritaria: Optional[int] = Query(None, description="Filtrar por escolas prioritárias"),
+    arquivo_csv: Optional[int] = Query(None, description="Retornar resultado em CSV")
 ):
     filter_conditions = []
     params = {}
@@ -78,5 +82,19 @@ def list_escolas(
     """)
 
     results = db.execute(query, params).mappings().all()
+    rows = [dict(row) for row in results]
 
-    return [dict(row) for row in results]
+    if arquivo_csv:
+        output = io.StringIO()
+        if not rows:
+            writer = csv.writer(output)
+            writer.writerow(["Nenhum dado encontrado"])
+        else:
+            writer = csv.DictWriter(output, fieldnames=rows[0].keys())
+            writer.writeheader()
+            writer.writerows(rows)
+        output.seek(0)
+        print(f"CSV generated with {len(rows)} rows.")
+        return StreamingResponse(output, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=escolas.csv"})
+    else:
+        return rows
